@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config();
 
 const app = express();
@@ -20,22 +20,24 @@ const client = new MongoClient(uri, {
   }
 });
 
-// ✅ Declare collections in outer scope so routes can access them
-let userCollection;
-let flightsCollection;
+// Declare collections
+// let userCollection;
+// let flightsCollection;
 
 async function run() {
   try {
     await client.connect();
     console.log("✅ Connected to MongoDB");
+    const userCollection = client.db('wingBooker').collection('users');
+    const flightCollection = client.db('wingBooker').collection('flights');
+    const bookingCollection = client.db('wingBooker').collection('bookings');
 
-    const db = client.db("wingBooker");
+    // const db = client.db("wingBooker");
+    // userCollection = db.collection("users");
+    // flightsCollection = db.collection("flights");
+    // flightsCollection = db.collection("flights");
 
-    // ✅ Initialize collections
-    userCollection = db.collection("users");
-    flightsCollection = db.collection("flights");
-
-    // ✅ USERS ENDPOINTS
+    // USERS
     app.get('/users', async (req, res) => {
       const result = await userCollection.find().toArray();
       res.send(result);
@@ -43,10 +45,7 @@ async function run() {
 
     app.post('/users', async (req, res) => {
       const user = req.body;
-      console.log("Incoming user:", user);
-
-      const query = { email: user.email };
-      const existingUser = await userCollection.findOne(query);
+      const existingUser = await userCollection.findOne({ email: user.email });
 
       if (existingUser) {
         return res.send({ message: 'User already exists' });
@@ -56,12 +55,21 @@ async function run() {
       res.send(result);
     });
 
-    // ✅ FLIGHTS ENDPOINT
-    app.post("/flights", async (req, res) => {
+    // ✅ FLIGHTS - GET
+    app.get('/flights', async (req, res) => {
+      try {
+        const result = await flightsCollection.find().toArray();
+        res.status(200).json(result);
+      } catch (err) {
+        console.error("Error fetching flights:", err);
+        res.status(500).json({ error: "Failed to fetch flights" });
+      }
+    });
+
+    // ✅ FLIGHTS - POST
+    app.post('/flights', async (req, res) => {
       try {
         const { from, to, dateRange, price, classType, img } = req.body;
-
-        console.log("Received flight data:", req.body);
 
         if (!from || !to || !dateRange || !price || !classType || !img) {
           return res.status(400).json({ error: "All fields are required" });
@@ -79,19 +87,48 @@ async function run() {
 
         const result = await flightsCollection.insertOne(newFlight);
         res.status(201).json({ insertedId: result.insertedId });
-
       } catch (err) {
-        console.error("❌ Error adding flight:", err);
+        console.error("Error adding flight:", err);
         res.status(500).json({ error: "Internal server error" });
       }
     });
 
+    app.get("/flights/:id", async (req, res) => {
+        try {
+          const id = req.params.id;
+          const flight = await flightsCollection.findOne({ _id: new ObjectId(id) });
+      
+          if (!flight) {
+            return res.status(404).json({ error: "Flight not found" });
+          }
+      
+          res.status(200).json(flight);
+        } catch (err) {
+          console.error("Error fetching flight details:", err);
+          res.status(500).json({ error: "Failed to fetch flight details" });
+        }
+      });
+
+    //   booking
+
+    app.post('/bookings', async (req, res) => {
+        try {
+          const booking = req.body;
+          const result = await bookingCollection.collection('bookings').insertOne(booking);
+          res.status(201).json({ insertedId: result.insertedId });
+        } catch (error) {
+          console.error("Booking error:", error);
+          res.status(500).json({ error: "Failed to book flight" });
+        }
+      });
+      
+
   } catch (error) {
-    console.error("MongoDB connection error:", error);
+    console.error("❌ Error connecting to MongoDB:", error);
   }
 }
 
-run();
+run().catch(err => console.error("🔥 Run Error:", err));
 
 app.get('/', (req, res) => {
   res.send('✈️ Airline Reservation System Running...');
