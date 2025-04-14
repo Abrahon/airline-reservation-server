@@ -27,15 +27,11 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     await client.connect();
-    console.log("✅ Connected to MongoDB");
+
+    console.log(" Connected to MongoDB");
     const userCollection = client.db('wingBooker').collection('users');
     const flightCollection = client.db('wingBooker').collection('flights');
     const bookingCollection = client.db('wingBooker').collection('bookings');
-
-    // const db = client.db("wingBooker");
-    // userCollection = db.collection("users");
-    // flightsCollection = db.collection("flights");
-    // flightsCollection = db.collection("flights");
 
     // USERS
     app.get('/users', async (req, res) => {
@@ -55,10 +51,10 @@ async function run() {
       res.send(result);
     });
 
-    // ✅ FLIGHTS - GET
+    //  FLIGHTS - GET
     app.get('/flights', async (req, res) => {
       try {
-        const result = await flightsCollection.find().toArray();
+        const result = await flightCollection.find().toArray();
         res.status(200).json(result);
       } catch (err) {
         console.error("Error fetching flights:", err);
@@ -66,7 +62,7 @@ async function run() {
       }
     });
 
-    // ✅ FLIGHTS - POST
+    // FLIGHTS - POST
     app.post('/flights', async (req, res) => {
       try {
         const { from, to, dateRange, price, classType, img } = req.body;
@@ -85,7 +81,7 @@ async function run() {
           createdAt: new Date(),
         };
 
-        const result = await flightsCollection.insertOne(newFlight);
+        const result = await flightCollection.insertOne(newFlight);
         res.status(201).json({ insertedId: result.insertedId });
       } catch (err) {
         console.error("Error adding flight:", err);
@@ -96,7 +92,7 @@ async function run() {
     app.get("/flights/:id", async (req, res) => {
         try {
           const id = req.params.id;
-          const flight = await flightsCollection.findOne({ _id: new ObjectId(id) });
+          const flight = await flightCollection.findOne({ _id: new ObjectId(id) });
       
           if (!flight) {
             return res.status(404).json({ error: "Flight not found" });
@@ -114,26 +110,36 @@ async function run() {
     app.post('/bookings', async (req, res) => {
         try {
           const booking = req.body;
-          const result = await bookingCollection.collection('bookings').insertOne(booking);
+          const result = await bookingCollection.insertOne(booking);
           res.status(201).json({ insertedId: result.insertedId });
         } catch (error) {
           console.error("Booking error:", error);
           res.status(500).json({ error: "Failed to book flight" });
         }
       });
+
+
+         app.get('/bookings', async (req, res) => {
+            const email = req.params.email;
+            // const query = { userEmail: email };
+            const result = await bookingCollection.find({ userEmail: email }).toArray();
+            res.send(result);
+        });
+
+
       
 
   } catch (error) {
-    console.error("❌ Error connecting to MongoDB:", error);
+    console.error(" Error connecting to MongoDB:", error);
   }
 }
 
-run().catch(err => console.error("🔥 Run Error:", err));
+run().catch(err => console.error(" Run Error:", err));
 
 app.get('/', (req, res) => {
   res.send('✈️ Airline Reservation System Running...');
 });
 
 app.listen(port, () => {
-  console.log(`🚀 Server is listening on port ${port}`);
+  console.log(`Server is listening on port ${port}`);
 });
