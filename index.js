@@ -20,8 +20,9 @@ const client = new MongoClient(uri, {
   }
 });
 
-// 🟩 Declare outside to keep scope
+// ✅ Declare collections in outer scope so routes can access them
 let userCollection;
+let flightsCollection;
 
 async function run() {
   try {
@@ -29,37 +30,66 @@ async function run() {
     console.log("✅ Connected to MongoDB");
 
     const db = client.db("wingBooker");
-    userCollection = db.collection("users");
 
-    // GET all users
-    app.get('/users',async(req, res)=>{
-     const result = await userCollection.find().toArray();
-     res.send(result)
-  });
-  
-    // POST user
+    // ✅ Initialize collections
+    userCollection = db.collection("users");
+    flightsCollection = db.collection("flights");
+
+    // ✅ USERS ENDPOINTS
+    app.get('/users', async (req, res) => {
+      const result = await userCollection.find().toArray();
+      res.send(result);
+    });
+
     app.post('/users', async (req, res) => {
       const user = req.body;
       console.log("Incoming user:", user);
 
-      const query = { email: user.email }
+      const query = { email: user.email };
       const existingUser = await userCollection.findOne(query);
 
       if (existingUser) {
-        return res.send({ message: 'user already exists' });
+        return res.send({ message: 'User already exists' });
       }
 
       const result = await userCollection.insertOne(user);
       res.send(result);
     });
 
+    // ✅ FLIGHTS ENDPOINT
+    app.post("/flights", async (req, res) => {
+      try {
+        const { from, to, dateRange, price, classType, img } = req.body;
+
+        console.log("Received flight data:", req.body);
+
+        if (!from || !to || !dateRange || !price || !classType || !img) {
+          return res.status(400).json({ error: "All fields are required" });
+        }
+
+        const newFlight = {
+          from,
+          to,
+          dateRange,
+          price: parseFloat(price),
+          classType,
+          img,
+          createdAt: new Date(),
+        };
+
+        const result = await flightsCollection.insertOne(newFlight);
+        res.status(201).json({ insertedId: result.insertedId });
+
+      } catch (err) {
+        console.error("❌ Error adding flight:", err);
+        res.status(500).json({ error: "Internal server error" });
+      }
+    });
+
   } catch (error) {
     console.error("MongoDB connection error:", error);
   }
 }
-
-
-  
 
 run();
 
