@@ -20,10 +20,6 @@ const client = new MongoClient(uri, {
   }
 });
 
-// Declare collections
-// let userCollection;
-// let flightsCollection;
-
 async function run() {
   try {
     await client.connect();
