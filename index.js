@@ -118,16 +118,54 @@ async function run() {
         }
       });
 
-
-         app.get('/bookings', async (req, res) => {
-            const email = req.params.email;
-            // const query = { userEmail: email };
-            const result = await bookingCollection.find({ userEmail: email }).toArray();
-            res.send(result);
-        });
-
-
+      app.get('/bookings', async (req, res) => {
+        const email = req.query.email;
+        if (!email) {
+          return res.status(400).json({ error: "Email query parameter is required" });
+        }
       
+        try {
+          const result = await bookingCollection.find({ userEmail: email }).toArray();
+          res.send(result);
+        } catch (error) {
+          console.error("Error fetching bookings:", error);
+          res.status(500).json({ error: "Failed to fetch bookings" });
+        }
+      });
+      
+        
+// DELETE route to cancel a booking
+app.delete('/bookings/:id', async (req, res) => {
+    const bookingId = req.params.id;
+    try {
+      const result = await bookingCollection.deleteOne({ _id: new ObjectId(bookingId) });
+      const objectId = new ObjectId(bookingId);
+      console.log("Converted to ObjectId:", objectId);
+  
+      if (result.deletedCount === 1) {
+        res.status(200).json({ message: "Booking cancelled successfully" });
+      } else {
+        res.status(404).json({ error: "Booking not found" });
+      }
+    } catch (error) {
+      console.error("Error cancelling booking:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+// Route to get all bookings
+app.get('/bookings', async (req, res) => {
+    const email = req.query.email;
+    if (!email) {
+      return res.status(400).json({ error: 'Email query parameter is required' });
+    }
+  
+    const bookings = await bookingCollection.find({ email }).toArray();
+    res.json(bookings);
+  });
+  
+  
+
 
   } catch (error) {
     console.error(" Error connecting to MongoDB:", error);
